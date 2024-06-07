@@ -5,7 +5,10 @@ mod non_send;
 mod non_send_sync;
 #[cfg(feature = "thread_local")]
 mod non_sync;
+mod state;
 mod world_borrow;
+
+use core::marker::PhantomData;
 
 pub use borrow_info::BorrowInfo;
 #[cfg(feature = "thread_local")]
@@ -14,6 +17,7 @@ pub use non_send::NonSend;
 pub use non_send_sync::NonSendSync;
 #[cfg(feature = "thread_local")]
 pub use non_sync::NonSync;
+pub use state::{StatefulBorrow, StatefulWorldBorrow};
 pub use world_borrow::WorldBorrow;
 
 use crate::all_storages::{AllStorages, CustomStorageAccess};
@@ -24,7 +28,6 @@ use crate::sparse_set::SparseSet;
 use crate::tracking::{Track, Tracking, TrackingTimestamp};
 use crate::unique::UniqueStorage;
 use crate::views::{EntitiesView, EntitiesViewMut, UniqueView, UniqueViewMut, View, ViewMut};
-use core::marker::PhantomData;
 
 /// Describes if a storage is borrowed exclusively or not.  
 /// It is used to display workloads' borrowing information.
@@ -338,8 +341,8 @@ where
             last_removal_or_deletion: last_run.unwrap_or(current),
             current,
             sparse_set,
-            borrow: borrow,
-            all_borrow: all_borrow,
+            borrow,
+            all_borrow,
             phantom: PhantomData,
         }))
     }
@@ -372,8 +375,8 @@ where
             last_removal_or_deletion: last_run.unwrap_or(current),
             current,
             sparse_set,
-            borrow: borrow,
-            all_borrow: all_borrow,
+            borrow,
+            all_borrow,
             phantom: PhantomData,
         }))
     }
@@ -406,8 +409,8 @@ where
             last_removal_or_deletion: last_run.unwrap_or(current),
             current,
             sparse_set,
-            borrow: borrow,
-            all_borrow: all_borrow,
+            borrow,
+            all_borrow,
             phantom: PhantomData,
         }))
     }

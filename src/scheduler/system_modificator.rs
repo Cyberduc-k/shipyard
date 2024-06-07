@@ -1,11 +1,11 @@
-use crate::borrow::{BorrowInfo, WorldBorrow};
+use alloc::boxed::Box;
+use core::ops::Not;
+
+use crate::borrow::{BorrowInfo, StatefulWorldBorrow};
 use crate::scheduler::into_workload_run_if::IntoRunIf;
 use crate::scheduler::{IntoWorkloadSystem, WorkloadSystem};
 use crate::storage::StorageId;
-use crate::{error, AllStoragesViewMut, AsLabel, Unique, UniqueStorage};
-use crate::{Component, SparseSet};
-use alloc::boxed::Box;
-use core::ops::Not;
+use crate::{error, AllStoragesViewMut, AsLabel, Component, SparseSet, Unique, UniqueStorage};
 
 /// Modifies a system.
 pub trait SystemModificator<B, R> {
@@ -43,9 +43,9 @@ pub trait SystemModificator<B, R> {
         let run_if = move |all_storages: AllStoragesViewMut<'_>| match all_storages
             .custom_storage_by_id(storage_id)
         {
-            Ok(storage) => storage.is_empty(),
-            Err(error::GetStorage::MissingStorage { .. }) => true,
-            Err(_) => false,
+            | Ok(storage) => storage.is_empty(),
+            | Err(error::GetStorage::MissingStorage { .. }) => true,
+            | Err(_) => false,
         };
 
         self.run_if(run_if)
@@ -84,9 +84,9 @@ pub trait SystemModificator<B, R> {
         let should_skip = move |all_storages: AllStoragesViewMut<'_>| match all_storages
             .custom_storage_by_id(storage_id)
         {
-            Ok(storage) => storage.is_empty(),
-            Err(error::GetStorage::MissingStorage { .. }) => true,
-            Err(_) => false,
+            | Ok(storage) => storage.is_empty(),
+            | Err(error::GetStorage::MissingStorage { .. }) => true,
+            | Err(_) => false,
         };
 
         self.skip_if(should_skip)
@@ -260,7 +260,7 @@ impl SystemModificator<WorkloadSystem, ()> for WorkloadSystem {
 
 macro_rules! impl_into_workload_system {
     ($(($type: ident, $index: tt))+) => {
-        impl<$($type: WorldBorrow + BorrowInfo,)+ R, Func> SystemModificator<($($type,)+), R> for Func
+        impl<$($type: StatefulWorldBorrow + BorrowInfo,)+ R, Func> SystemModificator<($($type,)+), R> for Func
         where
             R: 'static,
             Func: 'static

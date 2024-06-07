@@ -1,3 +1,6 @@
+use alloc::boxed::Box;
+use alloc::vec::Vec;
+
 use super::TypeInfo;
 use crate::all_storages::AllStorages;
 use crate::error;
@@ -6,8 +9,6 @@ use crate::scheduler::label::Label;
 use crate::scheduler::workload::Workload;
 use crate::type_id::TypeId;
 use crate::world::World;
-use alloc::boxed::Box;
-use alloc::vec::Vec;
 
 /// Self contained system that may be inserted into a [`Workload`].
 ///

@@ -1,18 +1,18 @@
+use alloc::boxed::Box;
+use alloc::vec;
+use alloc::vec::Vec;
+use core::any::type_name;
+use core::sync::atomic::{AtomicU32, Ordering};
+
 use crate::all_storages::AllStorages;
-use crate::borrow::{BorrowInfo, Mutability, WorldBorrow};
+use crate::borrow::{BorrowInfo, Mutability, StatefulWorldBorrow};
 use crate::info::DedupedLabels;
 use crate::scheduler::label::{SystemLabel, WorkloadLabel};
 use crate::scheduler::{TypeInfo, WorkloadSystem};
 use crate::storage::StorageId;
 use crate::tracking::TrackingTimestamp;
 use crate::type_id::TypeId;
-use crate::{error, AsLabel, Workload};
-use crate::{Label, World};
-use alloc::boxed::Box;
-use alloc::vec;
-use alloc::vec::Vec;
-use core::any::type_name;
-use core::sync::atomic::{AtomicU32, Ordering};
+use crate::{error, AsLabel, Label, Workload, World};
 
 /// Trait used to add systems to a workload.
 ///
@@ -95,7 +95,7 @@ impl IntoWorkloadSystem<WorkloadSystem, ()> for WorkloadSystem {
 
 macro_rules! impl_into_workload_system {
     ($(($type: ident, $index: tt))+) => {
-        impl<$($type: WorldBorrow + BorrowInfo,)+ R, Func> IntoWorkloadSystem<($($type,)+), R> for Func
+        impl<$($type: StatefulWorldBorrow + BorrowInfo,)+ R, Func> IntoWorkloadSystem<($($type,)+), R> for Func
         where
             R: 'static,
             Func: 'static
@@ -145,6 +145,7 @@ macro_rules! impl_into_workload_system {
                     $type::enable_tracking(&mut tracking_to_enable);
                 )+
 
+                let state = std::sync::Mutex::<($($type::State,)*)>::default();
                 let last_run = AtomicU32::new(0);
                 Ok(WorkloadSystem {
                     borrow_constraints: borrows,
@@ -152,7 +153,9 @@ macro_rules! impl_into_workload_system {
                     system_fn: Box::new(move |world: &World| {
                         let current = world.get_current();
                         let last_run = TrackingTimestamp::new(last_run.swap(current.get(), Ordering::Acquire));
-                        Ok(drop((&&self)($($type::world_borrow(&world, Some(last_run), current)?),+)))
+                        let mut state = state.lock().unwrap();
+                        #[allow(clippy::missing_transmute_annotations)]
+                        Ok(drop((&&self)($($type::world_borrow(unsafe { core::mem::transmute(&mut state.$index) }, &world, Some(last_run), current)?),+)))
                     }),
                     type_id: TypeId::of::<Func>(),
                     display_name: Box::new(type_name::<Func>()),

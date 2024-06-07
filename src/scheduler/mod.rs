@@ -9,6 +9,11 @@ mod system_modificator;
 mod workload;
 mod workload_modificator;
 
+use alloc::boxed::Box;
+use alloc::vec::Vec;
+use core::hash::BuildHasherDefault;
+
+pub(crate) use info::TypeInfo;
 pub use into_workload::IntoWorkload;
 pub use into_workload_system::IntoWorkloadSystem;
 pub use into_workload_try_system::IntoWorkloadTrySystem;
@@ -18,16 +23,10 @@ pub use system_modificator::SystemModificator;
 pub use workload::{ScheduledWorkload, Workload};
 pub use workload_modificator::WorkloadModificator;
 
-pub(crate) use info::TypeInfo;
-
 use crate::info::WorkloadInfo;
 use crate::scheduler::system::WorkloadRunIfFn;
 use crate::type_id::TypeId;
-use crate::World;
-use crate::{error, ShipHashMap};
-use alloc::boxed::Box;
-use alloc::vec::Vec;
-use core::hash::BuildHasherDefault;
+use crate::{error, ShipHashMap, World};
 
 /// List of indexes into both systems and system_names
 #[derive(Default)]
@@ -62,7 +61,8 @@ impl PartialEq for Batches {
 }
 
 #[cfg(test)]
-impl Eq for Batches {}
+impl Eq for Batches {
+}
 
 // systems are stored in an array to easily find if a system was already added
 // this wouldn't be possible if they were in the HashMap

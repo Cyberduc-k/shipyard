@@ -69,15 +69,6 @@ mod unique;
 mod views;
 mod world;
 
-#[cfg(feature = "thread_local")]
-#[cfg_attr(docsrs, doc(cfg(feature = "thread_local")))]
-pub use crate::borrow::NonSend;
-#[cfg(feature = "thread_local")]
-#[cfg_attr(docsrs, doc(cfg(feature = "thread_local")))]
-pub use crate::borrow::NonSendSync;
-#[cfg(feature = "thread_local")]
-#[cfg_attr(docsrs, doc(cfg(feature = "thread_local")))]
-pub use crate::borrow::NonSync;
 pub use add_component::AddComponent;
 pub use add_distinct_component::AddDistinctComponent;
 pub use add_entity::AddEntity;
@@ -89,7 +80,9 @@ pub use atomic_refcell::{ARef, ARefMut};
 #[doc(hidden)]
 pub use atomic_refcell::{ExclusiveBorrow, SharedBorrow};
 #[doc(inline)]
-pub use borrow::{Borrow, BorrowInfo, Mutability, WorldBorrow};
+pub use borrow::{
+    Borrow, BorrowInfo, Mutability, StatefulBorrow, StatefulWorldBorrow, WorldBorrow,
+};
 pub use component::{Component, Unique};
 pub use contains::Contains;
 pub use delete::Delete;
@@ -129,6 +122,16 @@ pub use views::{
     View, ViewMut,
 };
 pub use world::{World, WorldBuilder};
+
+#[cfg(feature = "thread_local")]
+#[cfg_attr(docsrs, doc(cfg(feature = "thread_local")))]
+pub use crate::borrow::NonSend;
+#[cfg(feature = "thread_local")]
+#[cfg_attr(docsrs, doc(cfg(feature = "thread_local")))]
+pub use crate::borrow::NonSendSync;
+#[cfg(feature = "thread_local")]
+#[cfg_attr(docsrs, doc(cfg(feature = "thread_local")))]
+pub use crate::borrow::NonSync;
 
 #[cfg(not(feature = "std"))]
 type ShipHashMap<K, V> =

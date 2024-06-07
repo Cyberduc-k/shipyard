@@ -1,3 +1,15 @@
+use alloc::boxed::Box;
+use alloc::format;
+// macro not module
+use alloc::vec;
+use alloc::vec::Vec;
+use core::any::type_name;
+#[cfg(not(feature = "std"))]
+use core::any::Any;
+use core::hash::BuildHasherDefault;
+#[cfg(feature = "std")]
+use std::error::Error;
+
 use crate::all_storages::AllStorages;
 use crate::borrow::Mutability;
 use crate::component::{Component, Unique};
@@ -12,17 +24,6 @@ use crate::type_id::TypeId;
 use crate::unique::UniqueStorage;
 use crate::world::World;
 use crate::{error, IntoWorkload, IntoWorkloadSystem, ShipHashMap};
-use alloc::boxed::Box;
-use alloc::format;
-// macro not module
-use alloc::vec;
-use alloc::vec::Vec;
-use core::any::type_name;
-#[cfg(not(feature = "std"))]
-use core::any::Any;
-use core::hash::BuildHasherDefault;
-#[cfg(feature = "std")]
-use std::error::Error;
 
 /// Used to create a [`Workload`].
 ///
@@ -222,10 +223,10 @@ impl Workload {
     fn propagate(&mut self) {
         for system in &mut self.systems {
             system.run_if = match (system.run_if.take(), self.run_if.clone()) {
-                (None, None) => None,
-                (None, Some(run_if)) => Some(run_if.to_non_clone()),
-                (Some(run_if), None) => Some(run_if),
-                (Some(system_run_if), Some(workload_run_if)) => Some(Box::new(move |world| {
+                | (None, None) => None,
+                | (None, Some(run_if)) => Some(run_if.to_non_clone()),
+                | (Some(run_if), None) => Some(run_if),
+                | (Some(system_run_if), Some(workload_run_if)) => Some(Box::new(move |world| {
                     Ok(workload_run_if.clone().run(world)? && (system_run_if)(world)?)
                 })),
             };
@@ -463,10 +464,10 @@ impl Workload {
 
         for enable_tracking_fn in &tracking_to_enable {
             (enable_tracking_fn)(&all_storages).map_err(|err| match err {
-                error::GetStorage::StorageBorrow { name, id, borrow } => {
+                | error::GetStorage::StorageBorrow { name, id, borrow } => {
                     error::AddWorkload::TrackingStorageBorrow { name, id, borrow }
-                }
-                _ => unreachable!(),
+                },
+                | _ => unreachable!(),
             })?;
         }
 
@@ -486,8 +487,10 @@ impl Workload {
     ) -> Result<(), error::UniquePresence> {
         struct ComponentType;
 
-        impl Component for ComponentType {}
-        impl Unique for ComponentType {}
+        impl Component for ComponentType {
+        }
+        impl Unique for ComponentType {
+        }
 
         let all_storages = world
             .all_storages
@@ -1083,8 +1086,8 @@ fn insert_system(
                     .rev()
                     .find(|other_system_info| !other_system_info.borrow.is_empty()),
             ) {
-                (None, None) => valid = i,
-                (Some(other_system_info), None)
+                | (None, None) => valid = i,
+                | (Some(other_system_info), None)
                 | (None, Some(other_system_info))
                 | (Some(other_system_info), Some(_)) => {
                     let system_info = SystemInfo {
@@ -1121,7 +1124,7 @@ fn insert_system(
                     }
 
                     return;
-                }
+                },
             }
         }
 
@@ -1260,7 +1263,7 @@ fn check_conflict(
     for other_type_info in &other_system.borrow {
         for type_info in borrow_constraints {
             match type_info.mutability {
-                Mutability::Exclusive => {
+                | Mutability::Exclusive => {
                     if !type_info.thread_safe && !other_type_info.thread_safe {
                         *conflict = Some(Conflict::OtherNotSendSync {
                             system: SystemId {
@@ -1288,8 +1291,8 @@ fn check_conflict(
 
                         return;
                     }
-                }
-                Mutability::Shared => {
+                },
+                | Mutability::Shared => {
                     if !type_info.thread_safe && !other_type_info.thread_safe {
                         *conflict = Some(Conflict::OtherNotSendSync {
                             system: SystemId {
@@ -1318,7 +1321,7 @@ fn check_conflict(
 
                         return;
                     }
-                }
+                },
             }
         }
     }
@@ -1458,16 +1461,15 @@ fn insert_before_after_system(
             },
         );
 
-        workload_info.batch_info.insert(
-            parallel_position,
-            BatchInfo {
+        workload_info
+            .batch_info
+            .insert(parallel_position, BatchInfo {
                 systems: if single_system {
                     (Some(system_info), Vec::new())
                 } else {
                     (None, vec![system_info])
                 },
-            },
-        );
+            });
     } else if single_system {
         batches.parallel[parallel_position].0 = Some(system_index);
         batches.parallel_run_if[parallel_position].0 = Some(batches.sequential_run_if.len() - 1);
@@ -1650,18 +1652,25 @@ mod tests {
     struct U32(u32);
     struct U16(u16);
 
-    impl Component for Usize {}
-    impl Component for U32 {}
-    impl Component for U16 {}
-    impl Unique for Usize {}
-    impl Unique for U32 {}
-    impl Unique for U16 {}
+    impl Component for Usize {
+    }
+    impl Component for U32 {
+    }
+    impl Component for U16 {
+    }
+    impl Unique for Usize {
+    }
+    impl Unique for U32 {
+    }
+    impl Unique for U16 {
+    }
 
     #[test]
     fn single_immutable() {
         use crate::{View, World};
 
-        fn system1(_: View<'_, Usize>) {}
+        fn system1(_: View<'_, Usize>) {
+        }
 
         let world = World::new();
 
@@ -1691,7 +1700,8 @@ mod tests {
     fn single_mutable() {
         use crate::{ViewMut, World};
 
-        fn system1(_: ViewMut<'_, Usize>) {}
+        fn system1(_: ViewMut<'_, Usize>) {
+        }
 
         let world = World::new();
 
@@ -1721,8 +1731,10 @@ mod tests {
     fn multiple_immutable() {
         use crate::{IntoWorkloadSystem, View, World};
 
-        fn system1(_: View<'_, Usize>) {}
-        fn system2(_: View<'_, Usize>) {}
+        fn system1(_: View<'_, Usize>) {
+        }
+        fn system2(_: View<'_, Usize>) {
+        }
 
         let world = World::new();
 
@@ -1753,8 +1765,10 @@ mod tests {
     fn multiple_mutable() {
         use crate::{ViewMut, World};
 
-        fn system1(_: ViewMut<'_, Usize>) {}
-        fn system2(_: ViewMut<'_, Usize>) {}
+        fn system1(_: ViewMut<'_, Usize>) {
+        }
+        fn system2(_: ViewMut<'_, Usize>) {
+        }
 
         let world = World::new();
 
@@ -1785,8 +1799,10 @@ mod tests {
     fn multiple_mixed() {
         use crate::{View, ViewMut, World};
 
-        fn system1(_: ViewMut<'_, Usize>) {}
-        fn system2(_: View<'_, Usize>) {}
+        fn system1(_: ViewMut<'_, Usize>) {
+        }
+        fn system2(_: View<'_, Usize>) {
+        }
 
         let world = World::new();
 
@@ -1841,9 +1857,12 @@ mod tests {
     fn append_optimizes_batches() {
         use crate::{View, ViewMut, World};
 
-        fn system_a1(_: View<'_, Usize>, _: ViewMut<'_, U32>) {}
-        fn system_a2(_: View<'_, Usize>, _: ViewMut<'_, U32>) {}
-        fn system_b1(_: View<'_, Usize>) {}
+        fn system_a1(_: View<'_, Usize>, _: ViewMut<'_, U32>) {
+        }
+        fn system_a2(_: View<'_, Usize>, _: ViewMut<'_, U32>) {
+        }
+        fn system_b1(_: View<'_, Usize>) {
+        }
 
         let world = World::new();
 
@@ -1880,8 +1899,10 @@ mod tests {
     fn all_storages() {
         use crate::{AllStoragesViewMut, View, World};
 
-        fn system1(_: View<'_, Usize>) {}
-        fn system2(_: AllStoragesViewMut<'_>) {}
+        fn system1(_: View<'_, Usize>) {
+        }
+        fn system2(_: AllStoragesViewMut<'_>) {
+        }
 
         let world = World::new();
 
@@ -1983,13 +2004,19 @@ mod tests {
         use crate::{NonSend, View, ViewMut, World};
 
         struct NotSend(*const ());
-        unsafe impl Sync for NotSend {}
-        impl Component for NotSend {}
+        unsafe impl Sync for NotSend {
+        }
+        impl Component for NotSend {
+        }
 
-        fn sys1(_: NonSend<View<'_, NotSend>>) {}
-        fn sys2(_: NonSend<ViewMut<'_, NotSend>>) {}
-        fn sys3(_: View<'_, Usize>) {}
-        fn sys4(_: ViewMut<'_, Usize>) {}
+        fn sys1(_: NonSend<View<'_, NotSend>>) {
+        }
+        fn sys2(_: NonSend<ViewMut<'_, NotSend>>) {
+        }
+        fn sys3(_: View<'_, Usize>) {
+        }
+        fn sys4(_: ViewMut<'_, Usize>) {
+        }
 
         let world = World::new();
 
@@ -2118,8 +2145,10 @@ mod tests {
     fn unique_and_non_unique() {
         use crate::{UniqueViewMut, ViewMut, World};
 
-        fn system1(_: ViewMut<'_, Usize>) {}
-        fn system2(_: UniqueViewMut<'_, Usize>) {}
+        fn system1(_: ViewMut<'_, Usize>) {
+        }
+        fn system2(_: UniqueViewMut<'_, Usize>) {
+        }
 
         let world = World::new();
 
@@ -2175,10 +2204,14 @@ mod tests {
     fn append_ensures_multiple_batches_can_be_optimized_over() {
         use crate::{View, ViewMut, World};
 
-        fn sys_a1(_: ViewMut<'_, Usize>, _: ViewMut<'_, U32>) {}
-        fn sys_a2(_: View<'_, Usize>, _: ViewMut<'_, U32>) {}
-        fn sys_b1(_: View<'_, Usize>) {}
-        fn sys_c1(_: View<'_, U16>) {}
+        fn sys_a1(_: ViewMut<'_, Usize>, _: ViewMut<'_, U32>) {
+        }
+        fn sys_a2(_: View<'_, Usize>, _: ViewMut<'_, U32>) {
+        }
+        fn sys_b1(_: View<'_, Usize>) {
+        }
+        fn sys_c1(_: View<'_, U16>) {
+        }
 
         let world = World::new();
 
@@ -2324,9 +2357,12 @@ mod tests {
 
     #[test]
     fn before_after() {
-        fn a() {}
-        fn b() {}
-        fn c() {}
+        fn a() {
+        }
+        fn b() {
+        }
+        fn c() {
+        }
 
         let (workload, _) = Workload::new("")
             .with_system(c.after_all(b))
@@ -2337,10 +2373,11 @@ mod tests {
 
         let batches = &workload.workloads[&"".as_label()];
         assert_eq!(batches.sequential, &[2, 1, 0]);
-        assert_eq!(
-            batches.parallel,
-            &[(None, vec![2]), (None, vec![1]), (None, vec![0])]
-        );
+        assert_eq!(batches.parallel, &[
+            (None, vec![2]),
+            (None, vec![1]),
+            (None, vec![0])
+        ]);
 
         let (workload, _) = Workload::new("")
             .with_system(a)
@@ -2351,10 +2388,11 @@ mod tests {
 
         let batches = &workload.workloads[&"".as_label()];
         assert_eq!(batches.sequential, &[0, 1, 2]);
-        assert_eq!(
-            batches.parallel,
-            &[(None, vec![0]), (None, vec![1]), (None, vec![2])]
-        );
+        assert_eq!(batches.parallel, &[
+            (None, vec![0]),
+            (None, vec![1]),
+            (None, vec![2])
+        ]);
 
         let (workload, _) = Workload::new("")
             .with_system(b.after_all(a))
@@ -2365,16 +2403,19 @@ mod tests {
 
         let batches = &workload.workloads[&"".as_label()];
         assert_eq!(batches.sequential, &[1, 0, 2]);
-        assert_eq!(
-            batches.parallel,
-            &[(None, vec![1]), (None, vec![0]), (None, vec![2])]
-        );
+        assert_eq!(batches.parallel, &[
+            (None, vec![1]),
+            (None, vec![0]),
+            (None, vec![2])
+        ]);
     }
 
     #[test]
     fn before_after_loop() {
-        fn a() {}
-        fn b() {}
+        fn a() {
+        }
+        fn b() {
+        }
 
         let result = Workload::new("")
             .with_system(a.after_all(b))
@@ -2387,8 +2428,10 @@ mod tests {
 
     #[test]
     fn before_after_no_anchor() {
-        fn a() {}
-        fn b() {}
+        fn a() {
+        }
+        fn b() {
+        }
 
         let (workload, _) = Workload::new("")
             .with_system(a.before_all(b))
@@ -2413,8 +2456,10 @@ mod tests {
 
     #[test]
     fn before_after_missing_system() {
-        fn a() {}
-        fn b() {}
+        fn a() {
+        }
+        fn b() {
+        }
 
         let (workload, _) = Workload::new("")
             .with_system(a.before_all(b))
@@ -2428,9 +2473,12 @@ mod tests {
 
     #[test]
     fn before_after_absent_system() {
-        fn a() {}
-        fn b() {}
-        fn c() {}
+        fn a() {
+        }
+        fn b() {
+        }
+        fn c() {
+        }
 
         let (workload, _) = Workload::new("")
             .with_system(a)
@@ -2446,9 +2494,12 @@ mod tests {
 
     #[test]
     fn before_after_system_label() {
-        fn a() {}
-        fn b() {}
-        fn c() {}
+        fn a() {
+        }
+        fn b() {
+        }
+        fn c() {
+        }
 
         let (workload, _) = Workload::new("")
             .with_system(a.tag("a"))
@@ -2464,10 +2515,11 @@ mod tests {
 
         let batches = &workload.workloads[&"".as_label()];
         assert_eq!(batches.sequential, &[2, 1, 0]);
-        assert_eq!(
-            batches.parallel,
-            &[(None, vec![2]), (None, vec![1]), (None, vec![0])]
-        );
+        assert_eq!(batches.parallel, &[
+            (None, vec![2]),
+            (None, vec![1]),
+            (None, vec![0])
+        ]);
 
         let (workload, _) = Workload::new("")
             .with_system(c.tag("c").after_all("b"))
@@ -2478,10 +2530,11 @@ mod tests {
 
         let batches = &workload.workloads[&"".as_label()];
         assert_eq!(batches.sequential, &[2, 1, 0]);
-        assert_eq!(
-            batches.parallel,
-            &[(None, vec![2]), (None, vec![1]), (None, vec![0])]
-        );
+        assert_eq!(batches.parallel, &[
+            (None, vec![2]),
+            (None, vec![1]),
+            (None, vec![0])
+        ]);
     }
 
     #[test]
@@ -2495,23 +2548,23 @@ mod tests {
 
         let batches = &workload.workloads[&"".as_label()];
 
-        assert_eq!(
-            batches,
-            &Batches {
-                parallel: vec![(None, vec![0]), (None, vec![2]), (Some(1), vec![])],
-                parallel_run_if: Vec::new(),
-                sequential: vec![0, 1, 2],
-                sequential_run_if: Vec::new(),
-                run_if: None,
-            }
-        );
+        assert_eq!(batches, &Batches {
+            parallel: vec![(None, vec![0]), (None, vec![2]), (Some(1), vec![])],
+            parallel_run_if: Vec::new(),
+            sequential: vec![0, 1, 2],
+            sequential_run_if: Vec::new(),
+            run_if: None,
+        });
     }
 
     #[test]
     fn sequential_workload() {
-        fn sys0() {}
-        fn sys1() {}
-        fn sys2() {}
+        fn sys0() {
+        }
+        fn sys1() {
+        }
+        fn sys2() {
+        }
         fn workload1() -> Workload {
             (sys0, sys1, sys2).into_sequential_workload()
         }
@@ -2520,16 +2573,19 @@ mod tests {
 
         let batches = &workload.workloads[&"".as_label()];
         assert_eq!(batches.sequential, &[0, 1, 2]);
-        assert_eq!(
-            batches.parallel,
-            &[(None, vec![0]), (None, vec![1]), (None, vec![2])]
-        );
+        assert_eq!(batches.parallel, &[
+            (None, vec![0]),
+            (None, vec![1]),
+            (None, vec![2])
+        ]);
     }
 
     #[test]
     fn before_after_borrow_conflict() {
-        fn sys0(_: View<'_, U32>) {}
-        fn sys1(_: AllStoragesViewMut<'_>) {}
+        fn sys0(_: View<'_, U32>) {
+        }
+        fn sys1(_: AllStoragesViewMut<'_>) {
+        }
 
         let (workload, _) = (sys0, sys1.before_all("not present"), sys0)
             .into_workload()
@@ -2538,10 +2594,11 @@ mod tests {
             .unwrap();
 
         let batches = &workload.workloads[&"".as_label()];
-        assert_eq!(
-            batches.parallel,
-            &[(None, vec![0]), (Some(1), Vec::new()), (None, vec![0])]
-        );
+        assert_eq!(batches.parallel, &[
+            (None, vec![0]),
+            (Some(1), Vec::new()),
+            (None, vec![0])
+        ]);
         assert_eq!(batches.sequential, &[0, 1, 0]);
     }
 
