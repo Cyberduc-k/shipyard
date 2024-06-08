@@ -74,6 +74,20 @@ impl<T: StatefulBorrow> StatefulWorldBorrow for T {
     }
 }
 
+impl StatefulWorldBorrow for &World {
+    type WorldView<'a> = &'a World;
+    type State = ();
+
+    fn world_borrow<'a>(
+        _state: &'a mut Self::State,
+        world: &'a World,
+        _last_run: Option<TrackingTimestamp>,
+        _current: TrackingTimestamp,
+    ) -> Result<Self::WorldView<'a>, error::GetStorage> {
+        Ok(world)
+    }
+}
+
 impl StatefulWorldBorrow for AllStoragesView<'_> {
     type WorldView<'a> = AllStoragesView<'a>;
     type State = ();

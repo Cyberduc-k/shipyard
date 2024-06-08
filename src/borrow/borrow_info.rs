@@ -8,7 +8,6 @@ use super::Mutability;
 use crate::all_storages::{AllStorages, CustomStorageAccess};
 use crate::component::{Component, Unique};
 use crate::entities::Entities;
-use crate::error;
 use crate::scheduler::TypeInfo;
 use crate::sparse_set::SparseSet;
 use crate::storage::StorageId;
@@ -18,6 +17,7 @@ use crate::views::{
     AllStoragesView, AllStoragesViewMut, EntitiesView, EntitiesViewMut, UniqueView, UniqueViewMut,
     View, ViewMut,
 };
+use crate::{error, World};
 use alloc::vec::Vec;
 use core::any::type_name;
 
@@ -68,6 +68,22 @@ pub unsafe trait BorrowInfo {
 
 unsafe impl BorrowInfo for () {
     fn borrow_info(_: &mut Vec<TypeInfo>) {}
+    fn enable_tracking(_: &mut Vec<fn(&AllStorages) -> Result<(), error::GetStorage>>) {}
+}
+
+unsafe impl BorrowInfo for &World {
+    fn borrow_info(info: &mut Vec<TypeInfo>) {
+        info.push(TypeInfo {
+            name: type_name::<World>().into(),
+            mutability: Mutability::Exclusive,
+            storage_id: StorageId::of::<AllStorages>(),
+            #[cfg(not(feature = "thread_local"))]
+            thread_safe: true,
+            #[cfg(feature = "thread_local")]
+            thread_safe: false,
+        });
+    }
+
     fn enable_tracking(_: &mut Vec<fn(&AllStorages) -> Result<(), error::GetStorage>>) {}
 }
 
