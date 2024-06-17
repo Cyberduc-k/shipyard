@@ -127,6 +127,20 @@ pub trait GetComponent {
     ) -> Result<Self::Out<'a>, error::GetComponent>;
 }
 
+impl GetComponent for () {
+    type Out<'a> = ();
+
+    #[inline]
+    fn get<'a>(
+        _all_storages: &'a AllStorages,
+        _all_borrow: Option<SharedBorrow<'a>>,
+        _current: TrackingTimestamp,
+        _entity: EntityId,
+    ) -> Result<Self::Out<'a>, error::GetComponent> {
+        Ok(())
+    }
+}
+
 impl<T: Component + Send + Sync> GetComponent for &'_ T {
     type Out<'a> = Ref<'a, &'a T>;
 
