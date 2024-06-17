@@ -15,6 +15,13 @@ pub struct UniqueView<'a, T: Unique> {
     pub(crate) current: TrackingTimestamp,
 }
 
+impl<'a, T: Unique> UniqueView<'a, T> {
+    /// Borrow the value for 'a
+    pub fn get(&self) -> &'a T {
+        &self.unique.value
+    }
+}
+
 impl<T: Unique> UniqueView<'_, T> {
     /// Duplicates the [`UniqueView`].
     ///
