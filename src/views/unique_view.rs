@@ -17,8 +17,8 @@ pub struct UniqueView<'a, T: Unique> {
 
 impl<'a, T: Unique> UniqueView<'a, T> {
     /// Borrow the value for 'a
-    pub fn get(&self) -> &'a T {
-        &self.unique.value
+    pub fn get(unique: &Self) -> &'a T {
+        &unique.unique.value
     }
 }
 
